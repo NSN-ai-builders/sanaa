@@ -1,0 +1,39 @@
+name: Deploy to lab-nsn
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Claude Code security & simplification review
+        run: |
+          npm install -g @anthropic-ai/claude-code --silent
+          REVIEW=$(claude --print \
+            "Review this codebase for: 1) security issues (injections, exposed secrets, auth flaws) 2) simplification opportunities. Be concise, list findings as bullet points. If critical security issue found, start your response with CRITICAL:" \
+            --permission-mode bypassPermissions)
+          echo "$REVIEW"
+          if echo "$REVIEW" | grep -q "^CRITICAL"; then
+            echo "::error::Critical security issue detected — deploy blocked. Fix before merging."
+            exit 1
+          fi
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: review
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to lab-nsn VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            /opt/lab-nsn/deploy.sh ${{ github.event.repository.name }} ${{ github.server_url }}/${{ github.repository }}.git
