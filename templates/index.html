@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanaa — Ticket Enrichment</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #fff;
+            color: #1a1a1a;
+            min-height: 100vh;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .header-left { display: flex; align-items: center; gap: 1.5rem; }
+        .logo { font-size: 1.5rem; font-weight: 700; }
+        .user-email { color: #6b7280; font-size: 0.875rem; }
+        .logout-btn {
+            background: none;
+            border: 1px solid #d1d5db;
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-family: inherit;
+            cursor: pointer;
+            color: #6b7280;
+        }
+        .logout-btn:hover { background: #f9fafb; }
+        main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .input-row {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+        .input-row input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            outline: none;
+        }
+        .input-row input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        .enrich-btn {
+            padding: 0.75rem 1.5rem;
+            background: #6366f1;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .enrich-btn:hover { background: #4f46e5; }
+        .enrich-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+            display: none;
+        }
+        .loading.active { display: block; }
+        .spinner {
+            display: inline-block;
+            width: 24px; height: 24px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 0.5rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .columns { grid-template-columns: 1fr; }
+            .input-row { flex-direction: column; }
+            header { flex-direction: column; gap: 0.75rem; }
+        }
+        .column {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .column-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fafafa;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-grey { background: #e5e7eb; color: #6b7280; }
+        .badge-indigo { background: #e0e7ff; color: #4338ca; }
+        .copy-btn {
+            background: none;
+            border: 1px solid #d1d5db;
+            padding: 0.3rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-family: inherit;
+            cursor: pointer;
+            color: #6b7280;
+        }
+        .copy-btn:hover { background: #f3f4f6; }
+        .column-body {
+            padding: 1rem;
+        }
+        .task-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+        }
+        .task-notes {
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #374151;
+        }
+        .repo-tag {
+            display: inline-block;
+            margin-bottom: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            background: #fef3c7;
+            color: #92400e;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .result { display: none; }
+        .result.active { display: block; }
+        .error-msg {
+            padding: 1rem;
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            display: none;
+            font-size: 0.9rem;
+        }
+        .error-msg.active { display: block; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <span class="logo">Sanaa</span>
+            <span class="user-email">{{ email }}</span>
+        </div>
+        <form action="/auth/logout" method="POST" style="margin:0;">
+            <button type="submit" class="logout-btn">Logout</button>
+        </form>
+    </header>
+    <main>
+        <div class="input-row">
+            <input type="text" id="taskInput" placeholder="Paste Asana task URL or GID">
+            <button class="enrich-btn" id="enrichBtn" onclick="enrich()">Enrich</button>
+        </div>
+
+        <div class="error-msg" id="errorMsg"></div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Fetching task and enriching…</p>
+        </div>
+
+        <div class="result" id="result">
+            <div class="columns">
+                <div class="column">
+                    <div class="column-header">
+                        <span class="badge badge-grey">Original</span>
+                    </div>
+                    <div class="column-body">
+                        <div class="task-name" id="origName"></div>
+                        <div class="task-notes" id="origNotes"></div>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="column-header">
+                        <span class="badge badge-indigo">Enriched</span>
+                        <button class="copy-btn" onclick="copyEnriched()">Copy</button>
+                    </div>
+                    <div class="column-body">
+                        <div id="repoTag"></div>
+                        <div class="task-notes" id="enrichedNotes"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+        const input = document.getElementById('taskInput');
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') enrich(); });
+
+        async function enrich() {
+            const task = input.value.trim();
+            if (!task) return;
+
+            const btn = document.getElementById('enrichBtn');
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const errorMsg = document.getElementById('errorMsg');
+
+            btn.disabled = true;
+            loading.classList.add('active');
+            result.classList.remove('active');
+            errorMsg.classList.remove('active');
+
+            try {
+                const res = await fetch('/enrich', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task }),
+                });
+
+                if (res.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Enrichment failed');
+
+                document.getElementById('origName').textContent = data.original.name;
+                document.getElementById('origNotes').textContent = data.original.notes || '(no notes)';
+                document.getElementById('enrichedNotes').textContent = data.enriched;
+
+                const repoTag = document.getElementById('repoTag');
+                if (data.repo) {
+                    repoTag.innerHTML = '<span class="repo-tag">Repo: ' + data.repo + '</span>';
+                } else {
+                    repoTag.innerHTML = '';
+                }
+
+                result.classList.add('active');
+            } catch (err) {
+                errorMsg.textContent = err.message;
+                errorMsg.classList.add('active');
+            }
+
+            loading.classList.remove('active');
+            btn.disabled = false;
+        }
+
+        function copyEnriched() {
+            const text = document.getElementById('enrichedNotes').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy', 1500);
+            });
+        }
+    </script>
+</body>
+</html>

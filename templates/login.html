@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanaa — Sign in</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #fff;
+            color: #1a1a1a;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            padding: 2.5rem;
+        }
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        input[type="email"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        input[type="email"]:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        button {
+            width: 100%;
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background: #6366f1;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        button:hover { background: #4f46e5; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .message {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            display: none;
+        }
+        .message.success { display: block; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .message.error { display: block; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>Sanaa</h1>
+        <p class="subtitle">Sign in with your @north-star.network email</p>
+        <form id="loginForm">
+            <label for="email">Email address</label>
+            <input type="email" id="email" name="email" placeholder="you@north-star.network" required>
+            <button type="submit" id="submitBtn">Send magic link</button>
+        </form>
+        <div id="msg" class="message"></div>
+    </div>
+    <script>
+        const form = document.getElementById('loginForm');
+        const msg = document.getElementById('msg');
+        const btn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            btn.disabled = true;
+            btn.textContent = 'Sending…';
+            msg.className = 'message';
+
+            try {
+                const fd = new FormData();
+                fd.append('email', email);
+                const res = await fetch('/auth/request', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (res.ok) {
+                    msg.textContent = 'Check your email for the magic link.';
+                    msg.className = 'message success';
+                } else {
+                    msg.textContent = data.detail || 'Something went wrong';
+                    msg.className = 'message error';
+                }
+            } catch {
+                msg.textContent = 'Network error. Try again.';
+                msg.className = 'message error';
+            }
+            btn.disabled = false;
+            btn.textContent = 'Send magic link';
+        });
+    </script>
+</body>
+</html>
